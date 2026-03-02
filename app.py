@@ -2,33 +2,15 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
-from geopy.geocoders import Nominatim
-from streamlit_folium import st_folium
-import folium
-import yagmail
-import os
-
-# FIREBASE
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# ---------- FIREBASE CONNECT ----------
+# ---------- FIREBASE CONNECT (STREAMLIT SECRETS) ----------
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_key.json")
+    cred = credentials.Certificate(dict(st.secrets["firebase"]))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
-
-# ---------- EMAIL CONFIG ----------
-EMAIL_USER = "smartcity@gmail.com"
-EMAIL_PASS = "jwhtjoouzekszyay"
-
-def send_email(subject, body):
-    try:
-        yag = yagmail.SMTP(EMAIL_USER, EMAIL_PASS)
-        yag.send(to=EMAIL_USER, subject=subject, contents=body)
-    except:
-        pass
 
 # ---------- PAGE ----------
 st.set_page_config(page_title="Smart City ITSM", layout="wide")
@@ -77,7 +59,7 @@ if not st.session_state.logged:
 
         if st.button("Register User"):
 
-            # check already exists
+            # check if exists
             existing = db.collection("users").where("username","==",new_user).stream()
             exist_flag = False
             for e in existing:
@@ -102,7 +84,7 @@ username = st.session_state.username
 # ---------- MENU ----------
 if role == "Admin":
     menu = st.sidebar.selectbox("Menu",
-    ["Dashboard","Infrastructure","Admin Panel"])
+    ["Dashboard","Admin Panel"])
 else:
     menu = st.sidebar.selectbox("Citizen Menu",
     ["Register Complaint","My Complaints"])
@@ -118,7 +100,23 @@ if menu == "Dashboard":
 
     if data:
         df = pd.DataFrame(data)
-        st.bar_chart(df["category"].value_counts())
+
+        if "category" in df.columns:
+            st.bar_chart(df["category"].value_counts())
+
+        if "status" in df.columns:
+            st.subheader("Status Distribution")
+            fig, ax = plt.subplots()
+            df["status"].value_counts().plot.pie(autopct="%1.1f%%", ax=ax)
+            st.pyplot(fig)
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total", len(df))
+        col2.metric("Pending", len(df[df["status"]=="Pending"]) if "status" in df.columns else 0)
+        col3.metric("Resolved", len(df[df["status"]=="Resolved"]) if "status" in df.columns else 0)
+
+    else:
+        st.info("No complaints yet")
 
 # ---------- REGISTER COMPLAINT ----------
 elif menu == "Register Complaint":
@@ -181,10 +179,16 @@ elif menu == "Admin Panel":
         new_status = st.selectbox("Status",["Pending","In Progress","Resolved"])
 
         if st.button("Update"):
-            db.collection("complaints").document(cid).update({"status": new_status})
-            st.success("Updated")
+            doc_ref = db.collection("complaints").document(cid)
+            if doc_ref.get().exists:
+                doc_ref.update({"status": new_status})
+                st.success("✅ Updated")
+            else:
+                st.error("Complaint not found")
 
         if st.button("Delete"):
             db.collection("complaints").document(cid).delete()
+            st.warning("🗑 Deleted")
 
-            st.warning("Deleted")
+    else:
+        st.info("No complaints available")
