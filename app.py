@@ -14,7 +14,7 @@ from firebase_admin import credentials, firestore
 
 # ---------- FIREBASE CONNECT ----------
 if not firebase_admin._apps:
-    cred = credentials.Certificate(r"D:\smart_city\firebase_key.json")
+    cred = credentials.Certificate("firebase_key.json")
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
@@ -186,4 +186,5 @@ elif menu == "Admin Panel":
 
         if st.button("Delete"):
             db.collection("complaints").document(cid).delete()
+
             st.warning("Deleted")
