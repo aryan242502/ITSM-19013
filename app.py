@@ -18,8 +18,8 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # ---------- EMAIL CONFIG (SECURE) ----------
-EMAIL_USER = os.environ.get("EMAIL_USER")
-EMAIL_PASS = os.environ.get("EMAIL_PASS")
+EMAIL_USER = os.environ.get("smartcity@gmail.com")
+EMAIL_PASS = os.environ.get("smart123")
 
 def send_email(subject, body):
     try:
@@ -185,3 +185,4 @@ elif menu == "Admin Panel":
             db.collection("complaints")\
                 .document(cid).delete()
             st.warning("Deleted")
+
